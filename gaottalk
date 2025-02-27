@@ -1,0 +1,95 @@
+/**
+ * @name The Ruski Replacer
+ * @version 1.1.0
+ * @description Replaces specified text everywhere in Discord with user-customizable options.
+ * @author Ruski
+ * @date 2/17/2025 12:56 AM
+ * @source Pornhub.com
+ */
+
+const BdApi = global.BdApi;
+
+module.exports = class ReplaceLilYay {
+    constructor() {
+        this.observer = null;
+        this.settings = BdApi.loadData("ReplaceLilYay", "settings") || { 
+            fromText: "lil yay", 
+            toText: "big nay" 
+        };
+        // Save the fixed date in a property if needed elsewhere
+        this.pluginDate = "2/17/2025 12:56 AM";
+    }
+
+    start() {
+        this.replaceText();
+        this.observeMutations();
+    }
+
+    stop() {
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
+    }
+
+    replaceText() {
+        document.querySelectorAll("div.messageContent_c19a55, span").forEach(el => {
+            if (el.textContent.includes(this.settings.fromText)) {
+                el.textContent = el.textContent.replace(new RegExp(this.settings.fromText, "g"), this.settings.toText);
+            }
+        });
+    }
+
+    observeMutations() {
+        this.observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                if (mutation.type === "childList" || mutation.type === "characterData") {
+                    this.replaceText();
+                }
+            });
+        });
+
+        this.observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+    }
+
+    getSettingsPanel() {
+        const panel = document.createElement("div");
+        panel.style.padding = "10px";
+
+        const fromInput = document.createElement("input");
+        fromInput.type = "text";
+        fromInput.value = this.settings.fromText;
+        fromInput.placeholder = "Text to replace";
+        fromInput.oninput = (e) => {
+            this.settings.fromText = e.target.value;
+            BdApi.saveData("ReplaceLilYay", "settings", this.settings);
+        };
+
+        const toInput = document.createElement("input");
+        toInput.type = "text";
+        toInput.value = this.settings.toText;
+        toInput.placeholder = "Replacement text";
+        toInput.oninput = (e) => {
+            this.settings.toText = e.target.value;
+            BdApi.saveData("ReplaceLilYay", "settings", this.settings);
+        };
+
+        panel.appendChild(document.createTextNode("Text to replace: "));
+        panel.appendChild(fromInput);
+        panel.appendChild(document.createElement("br"));
+        panel.appendChild(document.createTextNode("Replacement text: "));
+        panel.appendChild(toInput);
+
+        // Display the plugin date
+        const dateDiv = document.createElement("div");
+        dateDiv.style.marginTop = "10px";
+        dateDiv.textContent = "Plugin Date: " + this.pluginDate;
+        panel.appendChild(dateDiv);
+
+        return panel;
+    }
+};
