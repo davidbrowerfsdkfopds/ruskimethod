@@ -1,9 +1,8 @@
 /**
  * @name The Ruski Replacer
- * @version 1.1.0
- * @description Replaces specified text everywhere in Discord with user-customizable options.
+ * @version 1.1.3
+ * @description Replaces the text and date of the selected Discord message and optionally appends "(edited)" to the replaced message.
  * @author Ruski
- * @date 2/17/2025 12:56 AM
  * @source Pornhub.com
  */
 
@@ -12,16 +11,22 @@ const BdApi = global.BdApi;
 module.exports = class ReplaceLilYay {
     constructor() {
         this.observer = null;
-        this.settings = BdApi.loadData("ReplaceLilYay", "settings") || { 
-            fromText: "lil yay", 
-            toText: "big nay" 
+        // Load settings or set defaults.
+        // fromText: the text to search for (i.e. to "select" a message)
+        // toText: the text to replace with
+        // showEditedTag: if true, append " (edited)" when a replacement occurs
+        this.settings = BdApi.loadData("ReplaceLilYay", "settings") || {
+            fromText: "lil yay",
+            toText: "big nay",
+            showEditedTag: false
         };
-        // Save the fixed date in a property if needed elsewhere
-        this.pluginDate = "2/17/2025 12:56 AM";
+        // The fixed date to display as the message sent time.
+        this.fixedDate = "2/17/2025 12:56 AM";
     }
 
     start() {
-        this.replaceText();
+        // Replace the selected message once on startup.
+        this.replaceSelectedMessage();
         this.observeMutations();
     }
 
@@ -32,23 +37,51 @@ module.exports = class ReplaceLilYay {
         }
     }
 
-    replaceText() {
-        document.querySelectorAll("div.messageContent_c19a55, span").forEach(el => {
-            if (el.textContent.includes(this.settings.fromText)) {
-                el.textContent = el.textContent.replace(new RegExp(this.settings.fromText, "g"), this.settings.toText);
+    /**
+     * Finds the selected message (by searching for fromText),
+     * replaces its text with toText (adding " (edited)" if enabled),
+     * and sets its time to the fixed date.
+     */
+    replaceSelectedMessage() {
+        // Search for the first message element that contains the fromText.
+        const selectedMessage = [...document.querySelectorAll("div.messageContent_c19a55, span")].find(el =>
+            el.textContent.includes(this.settings.fromText)
+        );
+        if (selectedMessage) {
+            const originalText = selectedMessage.textContent;
+            const replacedText = originalText.replace(
+                new RegExp(this.settings.fromText, "g"),
+                this.settings.toText
+            );
+
+            // Only update if there is an actual change.
+            if (replacedText !== originalText) {
+                let finalText = replacedText;
+                if (this.settings.showEditedTag && !finalText.endsWith(" (edited)")) {
+                    finalText += " (edited)";
+                }
+                selectedMessage.textContent = finalText;
+
+                // Find the message container (a parent element that holds the <time> element).
+                const messageContainer = selectedMessage.closest("div[class*='message']");
+                if (messageContainer) {
+                    const timeEl = messageContainer.querySelector("time");
+                    if (timeEl) {
+                        timeEl.textContent = this.fixedDate;
+                    }
+                }
             }
-        });
+        }
     }
 
+    /**
+     * Observes DOM mutations so that if new messages or changes occur,
+     * the plugin will re-check and update the selected message if needed.
+     */
     observeMutations() {
-        this.observer = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                if (mutation.type === "childList" || mutation.type === "characterData") {
-                    this.replaceText();
-                }
-            });
+        this.observer = new MutationObserver(() => {
+            this.replaceSelectedMessage();
         });
-
         this.observer.observe(document.body, {
             childList: true,
             subtree: true,
@@ -56,19 +89,28 @@ module.exports = class ReplaceLilYay {
         });
     }
 
+    /**
+     * Builds the settings panel.
+     * - "Message text to select": The unique text that identifies the target message.
+     * - "Replacement text": The text that will replace any occurrences of the fromText.
+     * - "Append (edited) to replaced message": When checked, if a replacement occurs, the text " (edited)" will be appended.
+     */
     getSettingsPanel() {
         const panel = document.createElement("div");
         panel.style.padding = "10px";
 
+        // "Message text to select" input.
         const fromInput = document.createElement("input");
         fromInput.type = "text";
         fromInput.value = this.settings.fromText;
-        fromInput.placeholder = "Text to replace";
+        fromInput.placeholder = "Message text to select";
         fromInput.oninput = (e) => {
             this.settings.fromText = e.target.value;
             BdApi.saveData("ReplaceLilYay", "settings", this.settings);
+            this.replaceSelectedMessage();
         };
 
+        // "Replacement text" input.
         const toInput = document.createElement("input");
         toInput.type = "text";
         toInput.value = this.settings.toText;
@@ -76,19 +118,33 @@ module.exports = class ReplaceLilYay {
         toInput.oninput = (e) => {
             this.settings.toText = e.target.value;
             BdApi.saveData("ReplaceLilYay", "settings", this.settings);
+            this.replaceSelectedMessage();
         };
 
-        panel.appendChild(document.createTextNode("Text to replace: "));
+        // "Append (edited)" checkbox.
+        const showEditedLabel = document.createElement("label");
+        showEditedLabel.style.display = "block";
+        showEditedLabel.style.marginTop = "10px";
+        showEditedLabel.textContent = "Append (edited) to replaced message: ";
+
+        const showEditedCheckbox = document.createElement("input");
+        showEditedCheckbox.type = "checkbox";
+        showEditedCheckbox.checked = this.settings.showEditedTag;
+        showEditedCheckbox.onchange = (e) => {
+            this.settings.showEditedTag = e.target.checked;
+            BdApi.saveData("ReplaceLilYay", "settings", this.settings);
+            this.replaceSelectedMessage();
+        };
+
+        showEditedLabel.appendChild(showEditedCheckbox);
+
+        // Assemble the settings panel.
+        panel.appendChild(document.createTextNode("Message text to select: "));
         panel.appendChild(fromInput);
         panel.appendChild(document.createElement("br"));
         panel.appendChild(document.createTextNode("Replacement text: "));
         panel.appendChild(toInput);
-
-        // Display the plugin date
-        const dateDiv = document.createElement("div");
-        dateDiv.style.marginTop = "10px";
-        dateDiv.textContent = "Plugin Date: " + this.pluginDate;
-        panel.appendChild(dateDiv);
+        panel.appendChild(showEditedLabel);
 
         return panel;
     }
