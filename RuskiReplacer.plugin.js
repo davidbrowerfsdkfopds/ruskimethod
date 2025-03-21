@@ -1,7 +1,7 @@
 /**
  * @name The Ruski Replacer
  * @version 1.1.0
- * @description Replaces specified text in Discord messages and sets a fixed message date. Optionally appends "(edited)".
+ * @description Replaces specified text in Discord messages and, optionally, sets a fixed message date. Optionally appends "(edited)".
  * @author Ruski
  * @source https://github.com/davidbrowerfsdkfopds/ruskimethod
  * @updateURL https://raw.githubusercontent.com/davidbrowerfsdkfopds/ruskimethod/main/RuskiReplacer.plugin.js
@@ -18,10 +18,10 @@ module.exports = class RuskiReplacer {
     this.settings = BdApi.loadData("RuskiReplacer", "settings") || {
       fromText: "lil yay",
       toText: "big nay",
-      showEditedTag: false
+      showEditedTag: false,
+      editDateTime: false,
+      fixedDate: "2/17/2025 12:56 AM"
     };
-    // Fixed date to display
-    this.fixedDate = "2/17/2025 12:56 AM";
   }
 
   start() {
@@ -40,7 +40,7 @@ module.exports = class RuskiReplacer {
     }
   }
 
-  // Combined function to replace both text and date content
+  // Combined function to replace text and, optionally, date content
   replaceContent = () => {
     // Replace text in message elements
     document.querySelectorAll("div[class*='messageContent'], span").forEach(el => {
@@ -53,10 +53,12 @@ module.exports = class RuskiReplacer {
         el.textContent = replaced + (this.settings.showEditedTag && !replaced.endsWith(" (edited)") ? " (edited)" : "");
       }
     });
-    // Set all <time> elements to the fixed date
-    document.querySelectorAll("time").forEach(el => {
-      el.textContent = this.fixedDate;
-    });
+    // Update all <time> elements to the fixed date only if the option is enabled
+    if (this.settings.editDateTime) {
+      document.querySelectorAll("time").forEach(el => {
+        el.textContent = this.settings.fixedDate;
+      });
+    }
   };
 
   // Observe DOM changes and debounce replacement calls
@@ -72,7 +74,7 @@ module.exports = class RuskiReplacer {
     });
   }
 
-  // Generate a settings panel using template literals for simplicity
+  // Generate a settings panel with additional options for editing date and time
   getSettingsPanel() {
     const panel = document.createElement("div");
     panel.style.padding = "10px";
@@ -91,13 +93,30 @@ module.exports = class RuskiReplacer {
       <div style="margin-top: 10px;">
         <label>
           Append (edited) to replaced messages: 
-          <input type="checkbox" ${this.settings.showEditedTag ? "checked" : ""}>
+          <input type="checkbox" id="showEditedCheckbox" ${this.settings.showEditedTag ? "checked" : ""}>
+        </label>
+      </div>
+      <div style="margin-top: 10px;">
+        <label>
+          Edit date and time?
+          <input type="checkbox" id="editDateTimeCheckbox" ${this.settings.editDateTime ? "checked" : ""}>
+        </label>
+      </div>
+      <div style="margin-top: 10px;">
+        <label>
+          Fixed date and time:
+          <input type="text" id="fixedDateInput" value="${this.settings.fixedDate}" placeholder="Enter fixed date/time" ${!this.settings.editDateTime ? "disabled" : ""}>
         </label>
       </div>
     `;
     
     // Get input elements and attach events to save settings on change
-    const [fromInput, toInput, editedCheckbox] = panel.querySelectorAll("input");
+    const inputs = panel.querySelectorAll("input");
+    const fromInput = inputs[0];
+    const toInput = inputs[1];
+    const showEditedCheckbox = panel.querySelector("#showEditedCheckbox");
+    const editDateTimeCheckbox = panel.querySelector("#editDateTimeCheckbox");
+    const fixedDateInput = panel.querySelector("#fixedDateInput");
 
     fromInput.oninput = e => {
       this.settings.fromText = e.target.value;
@@ -109,8 +128,20 @@ module.exports = class RuskiReplacer {
       BdApi.saveData("RuskiReplacer", "settings", this.settings);
     };
 
-    editedCheckbox.onchange = e => {
+    showEditedCheckbox.onchange = e => {
       this.settings.showEditedTag = e.target.checked;
+      BdApi.saveData("RuskiReplacer", "settings", this.settings);
+    };
+
+    editDateTimeCheckbox.onchange = e => {
+      this.settings.editDateTime = e.target.checked;
+      BdApi.saveData("RuskiReplacer", "settings", this.settings);
+      // Enable or disable the fixed date input based on the checkbox
+      fixedDateInput.disabled = !this.settings.editDateTime;
+    };
+
+    fixedDateInput.oninput = e => {
+      this.settings.fixedDate = e.target.value;
       BdApi.saveData("RuskiReplacer", "settings", this.settings);
     };
 
