@@ -1,6 +1,6 @@
 /**
  * @name The Ruski Replacer
- * @version 1.1.0
+ * @version 2.1.0
  * @description Replaces specified text in Discord messages and, optionally, sets a fixed message date. Optionally appends "(edited)".
  * @author Ruski
  * @source https://github.com/davidbrowerfsdkfopds/ruskimethod
