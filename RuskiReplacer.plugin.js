@@ -3,7 +3,9 @@
  * @version 1.1.0
  * @description Replaces specified text in Discord messages and sets a fixed message date. Optionally appends "(edited)".
  * @author Ruski
- * @source https://github.com/davidbrowerfsdkfopds/ruskimethod/blob/main/gaottalk
+ * @source https://github.com/davidbrowerfsdkfopds/ruskimethod
+ * @updateURL https://raw.githubusercontent.com/davidbrowerfsdkfopds/ruskimethod/main/RuskiReplacer.plugin.js
+ * @downloadURL https://raw.githubusercontent.com/davidbrowerfsdkfopds/ruskimethod/main/RuskiReplacer.plugin.js
  */
 
 const BdApi = global.BdApi;
